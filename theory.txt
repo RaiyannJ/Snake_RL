@@ -5,4 +5,4 @@ One approach, using deep learning, is Deep Q Learning.
 The approach used deep neural networks to predict actions!
 
 
-1) 
+1) s
