@@ -1,0 +1,8 @@
+Reinforcement Learning (RL) is a subset of ML concerned w how software agents take actions in an environment to maximize the notion of cumulative reward.
+
+One approach, using deep learning, is Deep Q Learning.
+
+The approach used deep neural networks to predict actions!
+
+
+1) 
