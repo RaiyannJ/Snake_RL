@@ -1,107 +1,92 @@
 import torch
 import random
 import numpy as np
-
-from game import SnakeGameAI, Direction, Point #import from game file
-from collections import deque # data structure to store memory
-
+from collections import deque
+from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet, QTrainer
-from helper import plot
+from plotter import plot
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
 
-INP_SIZE = 11
-HIDDEN = 256
-OUT_SIZE = 3
 class Agent:
+
     def __init__(self):
         self.n_games = 0
         self.epsilon = 0 # randomness
-        self.gamma = 0.9 # discount rate apart of Bellman Eqn
-        self.memory = deque(maxlen=MAX_MEMORY) # pops out memory at the bottom
-        self.model = Linear_QNet(INP_SIZE, HIDDEN, OUT_SIZE)
-        self.trainer = QTrainer(self.model, lr = LR, gamma = self.gamma)
+        self.gamma = 0.9 # discount rate
+        self.memory = deque(maxlen=MAX_MEMORY) # popleft()
+        self.model = Linear_QNet(11, 256, 3)
+        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
 
     def get_state(self, game):
         head = game.snake[0]
-        point_l = Point(head.x - 20, head.y)
-        point_r = Point(head.x + 20, head.y)
-        point_u = Point(head.x, head.y - 20)
-        point_d = Point(head.x, head.y + 20)
 
-        dir_l = game.direction == Direction.LEFT
-        dir_r = game.direction == Direction.RIGHT
-        dir_u = game.direction == Direction.UP
-        dir_d = game.direction == Direction.DOWN
+    # Clok-wise directions and angles
+        cw_dirs = [
+      Direction.RIGHT == game.direction, 
+      Direction.DOWN == game.direction,
+      Direction.LEFT == game.direction,
+      Direction.UP == game.direction
+      ]
+        cw_angs = np.array([0, np.pi/2, np.pi, -np.pi/2])
 
-        # 11 game states
+    # Position - in front: 0, on right: 1, on left: -1; BLOCK_SIZE = 20
+        getPoint = lambda pos: Point(
+        head.x + 20*np.cos(cw_angs[(cw_dirs.index(True)+pos) % 4]),
+        head.y + 20*np.sin(cw_angs[(cw_dirs.index(True)+pos) % 4]))
+
         state = [
-            # Danger straight
-            (dir_r and game.is_collision(point_r)) or 
-            (dir_l and game.is_collision(point_l)) or 
-            (dir_u and game.is_collision(point_u)) or 
-            (dir_d and game.is_collision(point_d)),
+      # Danger
+      game.is_collision(getPoint(0)),
+      game.is_collision(getPoint(1)),
+      game.is_collision(getPoint(-1)),
 
-            # Danger right
-            (dir_u and game.is_collision(point_r)) or 
-            (dir_d and game.is_collision(point_l)) or 
-            (dir_l and game.is_collision(point_u)) or 
-            (dir_r and game.is_collision(point_d)),
+      # Move direction
+      cw_dirs[2],
+      cw_dirs[0],
+      cw_dirs[3],
+      cw_dirs[1],
 
-            # Danger left
-            (dir_d and game.is_collision(point_r)) or 
-            (dir_u and game.is_collision(point_l)) or 
-            (dir_r and game.is_collision(point_u)) or 
-            (dir_l and game.is_collision(point_d)),
-            
-            # Move direction
-            dir_l,
-            dir_r,
-            dir_u,
-            dir_d,
-            
-            # Food location 
-            game.food.x < game.head.x,  # food left
-            game.food.x > game.head.x,  # food right
-            game.food.y < game.head.y,  # food up
-            game.food.y > game.head.y  # food down
-            ]
+      # Food location
+      game.food.x < head.x,
+      game.food.x > head.x,
+      game.food.y < head.y,
+      game.food.y > head.y
+    ]
 
         return np.array(state, dtype=int)
 
-
     def remember(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+        self.memory.append((state, action, reward, next_state, done)) # popleft if MAX_MEMORY is reached
 
-    # previous games
     def train_long_memory(self):
         if len(self.memory) > BATCH_SIZE:
             mini_sample = random.sample(self.memory, BATCH_SIZE) # list of tuples
         else:
             mini_sample = self.memory
-        states, actions, rewards, next_states, dones = zip(*mini_sample) # gets all parameters at that memory location
-        self.trainer.train_step(states, actions, rewards, next_states, dones)
 
-    
-    # previous moves in current game
+        states, actions, rewards, next_states, dones = zip(*mini_sample)
+        self.trainer.train_step(states, actions, rewards, next_states, dones)
+        #for state, action, reward, nexrt_state, done in mini_sample:
+        #    self.trainer.train_step(state, action, reward, next_state, done)
+
     def train_short_memory(self, state, action, reward, next_state, done):
         self.trainer.train_step(state, action, reward, next_state, done)
 
-
     def get_action(self, state):
-        # random moves: tradeoff b/w exploration and exploitation
+        # random moves: tradeoff exploration / exploitation
         self.epsilon = 80 - self.n_games
         final_move = [0,0,0]
-        if random.randint(0,200) < self.epsilon:
-            move = random.randint(0,2)
+        if random.randint(0, 200) < self.epsilon:
+            move = random.randint(0, 2)
             final_move[move] = 1
         else:
             state0 = torch.tensor(state, dtype=torch.float)
             prediction = self.model(state0)
-            move = torch.argmax(prediction).itme()
+            move = torch.argmax(prediction).item()
             final_move[move] = 1
 
         return final_move
@@ -112,13 +97,13 @@ def train():
     plot_mean_scores = []
     total_score = 0
     record = 0
-    agent = Agent
-    game = SnakeGameAI
+    agent = Agent()
+    game = SnakeGameAI()
     while True:
         # get old state
         state_old = agent.get_state(game)
 
-        # get move based on state
+        # get move
         final_move = agent.get_action(state_old)
 
         # perform move and get new state
@@ -132,11 +117,11 @@ def train():
         agent.remember(state_old, final_move, reward, state_new, done)
 
         if done:
-            #train long memory
+            # train long memory, plot result
             game.reset()
             agent.n_games += 1
             agent.train_long_memory()
-            
+
             if score > record:
                 record = score
                 agent.model.save()
@@ -147,7 +132,8 @@ def train():
             total_score += score
             mean_score = total_score / agent.n_games
             plot_mean_scores.append(mean_score)
-            plot()
+            plot(plot_scores, plot_mean_scores)
+
 
 if __name__ == '__main__':
     train()

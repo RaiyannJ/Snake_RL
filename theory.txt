@@ -25,6 +25,6 @@ Our loss function (to minimze our loss) we will use Bellman Equation (updating o
 
 In simple terms: Q = model.predict(state_0), Q_new = Reward + gamma * max(Q(state_1)), MSE between the 2 values for loss!
 
-
+Use conda env pygame_env
 
 Theory explained by Patrick Loeber YouTube!
