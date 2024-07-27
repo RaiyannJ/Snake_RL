@@ -2,7 +2,29 @@ Reinforcement Learning (RL) is a subset of ML concerned w how software agents ta
 
 One approach, using deep learning, is Deep Q Learning.
 
-The approach used deep neural networks to predict actions!
+The approach used deep neural networks to predict actions! We will implement RL for a Snake game.
+
+1) We are using a simple Snake game made with PyGame. The agent will track game state and of course make actions to maximize reward.
+There are 3 rewards: eat food (+10), game over (-10), else (0)
+Also 3 actions, represented with vectors: straight [1,0,0], left [0,0,1], right [0,1,0]
+As well, we also have the state, with 11 different possbilities based on the actual game state (ie. danger, food, direction)
+
+2) Our model will be a feed forward neural network using PyTorch. Very simple model that I will work to improve and fine tune.
+There are 11 inputs (game state) and 3 outputs (action)
+
+3) Training will be done with Deep Q Learning using Q Value, Quality of Action.
+
+0. Initalize Q Value
+1. Choose Action (model.predict(state) or a random move when we no nothing abt the game)
+2. Perform Action
+3. Measure reward
+4. Update Q Value (and train model)
+then we repeat 1 to 4.
+
+Our loss function (to minimze our loss) we will use Bellman Equation (updating our next Q Value).
+
+In simple terms: Q = model.predict(state_0), Q_new = Reward + gamma * max(Q(state_1)), MSE between the 2 values for loss!
 
 
-1) s
+
+Theory explained by Patrick Loeber YouTube!
